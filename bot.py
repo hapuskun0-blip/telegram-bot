@@ -1,113 +1,85 @@
 import telebot
 import random
-import time
 from datetime import datetime, timedelta
 
 TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
 bot = telebot.TeleBot(TOKEN)
 
+# Market list
 markets = {
-    "💶 EUR/USD": "eurusd",
-    "💷 GBP/USD": "gbpusd",
-    "💴 AUD/USD": "audusd",
-    "🥇 XAU/USD": "xauusd"
+    "📊 CryptoIDX": "crypto"
 }
 
-# Simpan signal aktif per market
+# Simpan signal aktif (5 menit per market)
 active_signals = {}
 
-def generate_signal(pair):
-    random.seed(pair + str(time.time()))
-    direction = random.choice(["BUY 🟢", "SELL 🔴"])
+def generate_signal():
+    return random.choice(["BUY", "SELL"])
 
-    if "XAU" in pair:
-        entry = round(random.uniform(1900, 2100), 2)
-    else:
-        base_price = {
-            "EUR/USD": 1.0800,
-            "GBP/USD": 1.2600,
-            "AUD/USD": 0.6600
-        }
-
-        clean_pair = pair.replace("💶 ", "").replace("💷 ", "").replace("💴 ", "").replace("🥇 ", "")
-        base = base_price.get(clean_pair, 1.1000)
-        entry = round(base + random.uniform(-0.0100, 0.0100), 5)
-
-    return direction, entry
-
-
-def get_signal(pair_name):
+def get_signal(market_key):
     now = datetime.utcnow() + timedelta(hours=7)  # WIB
-    expiry_time = now + timedelta(minutes=5)
+    expired_time = now + timedelta(minutes=5)
 
-    # Kalau sudah ada signal & belum expired → pakai yang lama
-    if pair_name in active_signals:
-        saved = active_signals[pair_name]
+    # Kalau masih dalam 5 menit, pakai signal lama
+    if market_key in active_signals:
+        saved = active_signals[market_key]
         if now < saved["expired"]:
             return saved
 
-    # Kalau belum ada / sudah expired → bikin baru
-    direction, entry = generate_signal(pair_name)
+    # Kalau belum ada / sudah expired → buat baru
+    direction = generate_signal()
 
     signal_data = {
         "direction": direction,
-        "entry": entry,
-        "time": now.strftime("%H:%M:%S"),
-        "expired": expiry_time
+        "time": now.strftime("%H:%M"),
+        "date": now.strftime("%Y-%m-%d"),
+        "expired": expired_time
     }
 
-    active_signals[pair_name] = signal_data
+    active_signals[market_key] = signal_data
     return signal_data
 
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
-
-    for name, callback in markets.items():
+    markup = telebot.types.InlineKeyboardMarkup()
+    for name, value in markets.items():
         markup.add(
-            telebot.types.InlineKeyboardButton(name, callback_data=callback)
+            telebot.types.InlineKeyboardButton(name, callback_data=value)
         )
 
     bot.send_message(
         message.chat.id,
-        "🔥 *PREMIUM AI SIGNAL BOT*\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "📊 Real Time Market\n"
-        "💎 Pilih Market Di Bawah\n",
-        parse_mode="Markdown",
+        "🔥 YOYO SIGNAL BOT 🔥\n\nPilih Market:",
         reply_markup=markup
     )
 
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
-    pair_name = None
+    signal = get_signal(call.data)
 
-    for name, value in markets.items():
-        if call.data == value:
-            pair_name = name
-            break
+    # Biar emoji beda kalau BUY / SELL
+    if signal["direction"] == "BUY":
+        header = "🟢📈 BUY NOW 🔼"
+    else:
+        header = "🟥📉 SELL NOW 🔽"
 
-    if pair_name:
-        signal = get_signal(pair_name)
-
-        text = f"""
+    text = f"""
+{header} |⌚ {signal['date']}
 ━━━━━━━━━━━━━━━━━━
-📡 *{pair_name} SIGNAL*
+👉 {signal['time']}  S
+📊 MARKET: 𝗖𝗿𝘆𝗽𝘁𝗼𝗜𝗗𝗫
 ━━━━━━━━━━━━━━━━━━
-
-📈 Direction  : {signal['direction']}
-🎯 Entry Price: `{signal['entry']}`
-
-⏰ Time (WIB) : {signal['time']}
-⏳ Expired    : 5 Minutes
-
+⚠️ MAXIMAL K2 | KOMPENSASI SEARAH
+⚠️ LIHAT JAM DI GMT+7
+⚠️ CARA PAKAINYA -1 MENIT SEBELUM SIGNAL
 ━━━━━━━━━━━━━━━━━━
-🤖 Powered By AI System
+©️Copyright by @YOYO SIGNAL BOT
+🔄 /start untuk Cek Signal Berikutnya
 """
 
-        bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
+    bot.send_message(call.message.chat.id, text)
 
 
 print("Bot running...")
