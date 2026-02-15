@@ -3,7 +3,7 @@ import random
 import time
 from datetime import datetime, timedelta
 
-TOKEN = "ISI_TOKEN_BOT_LU"
+TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
 bot = telebot.TeleBot(TOKEN)
 
 # Market list
