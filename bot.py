@@ -7,10 +7,10 @@ TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
 bot = telebot.TeleBot(TOKEN)
 
 markets = {
-    "CryptoIDX": "crypto",
-    "Samba_X": "samba",
-    "Tropic_X": "tropic",
-    "Street_X": "street"
+    "CryptoIDX": "📊crypto",
+    "Samba_X": "📊samba",
+    "Tropic_X": "📊tropic",
+    "Street_X": "📊street"
 }
 
 active_signals = {}
