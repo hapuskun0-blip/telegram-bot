@@ -6,18 +6,20 @@ from datetime import datetime, timedelta
 TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
 bot = telebot.TeleBot(TOKEN)
 
+# Market list baru
 markets = {
-    "CryptoIDX": "📊crypto",
-    "Samba_X": "📊samba",
-    "Tropic_X": "📊tropic",
-    "Street_X": "📊street"
+    "CryptoIDX": "crypto",
+    "Samba_X": "samba",
+    "Tropic_X": "tropic",
+    "Street_X": "street"
 }
 
+# Simpan signal aktif (5 menit per market)
 active_signals = {}
 
 def generate_signal(prev_signal=None):
+    """Generate signal baru yang pasti beda dari sebelumnya"""
     choices = ["BUY", "SELL"]
-    # pastikan beda dari sebelumnya
     if prev_signal in choices:
         choices.remove(prev_signal)
     return random.choice(choices)
@@ -34,14 +36,13 @@ def get_signal(market_key):
     prev_signal = active_signals.get(market_key, {}).get("direction")
     direction = generate_signal(prev_signal)
 
-    # Jika kebetulan masih sama karena timing, ulang sampai beda
     attempts = 0
     while prev_signal == direction and attempts < 5:
         direction = generate_signal(prev_signal)
         attempts += 1
 
-    now = datetime.utcnow() + timedelta(hours=7)
-    expired_timestamp = now_timestamp + 300
+    now = datetime.utcnow() + timedelta(hours=7)  # WIB
+    expired_timestamp = now_timestamp + 300  # 5 menit
 
     signal_data = {
         "direction": direction,
@@ -53,12 +54,15 @@ def get_signal(market_key):
     active_signals[market_key] = signal_data
     return signal_data
 
+# ==== START COMMAND ====
 @bot.message_handler(commands=['start'])
 def start(message):
     markup = telebot.types.InlineKeyboardMarkup(row_width=2)
     for market_name, market_key in markets.items():
+        # Tambahin stiker 📊 di nama market
+        display_name = f"📊 {market_name}"
         markup.add(
-            telebot.types.InlineKeyboardButton(text=market_name, callback_data=market_key)
+            telebot.types.InlineKeyboardButton(text=display_name, callback_data=market_key)
         )
     bot.send_message(
         message.chat.id,
@@ -66,6 +70,7 @@ def start(message):
         reply_markup=markup
     )
 
+# ==== CALLBACK HANDLER ====
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
     signal = get_signal(call.data)
