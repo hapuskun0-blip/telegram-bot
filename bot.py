@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
 bot = telebot.TeleBot(TOKEN)
 
-# Market list baru
 markets = {
     "CryptoIDX": "crypto",
     "Samba_X": "samba",
@@ -14,12 +13,11 @@ markets = {
     "Street_X": "street"
 }
 
-# Simpan signal aktif (5 menit per market)
 active_signals = {}
 
 def generate_signal(prev_signal=None):
-    """Generate signal baru yang pasti beda dari sebelumnya"""
     choices = ["BUY", "SELL"]
+    # pastikan beda dari sebelumnya
     if prev_signal in choices:
         choices.remove(prev_signal)
     return random.choice(choices)
@@ -27,18 +25,23 @@ def generate_signal(prev_signal=None):
 def get_signal(market_key):
     now_timestamp = int(time.time())
 
-    # Pakai signal lama kalau belum expired
     if market_key in active_signals:
         saved = active_signals[market_key]
         if now_timestamp < saved["expired"]:
             return saved
 
-    # Generate baru, pastikan beda dari sebelumnya
+    # Generate baru sampai beda dari sebelumnya
     prev_signal = active_signals.get(market_key, {}).get("direction")
     direction = generate_signal(prev_signal)
 
-    now = datetime.utcnow() + timedelta(hours=7)  # WIB
-    expired_timestamp = now_timestamp + 300  # 5 menit = 300 detik
+    # Jika kebetulan masih sama karena timing, ulang sampai beda
+    attempts = 0
+    while prev_signal == direction and attempts < 5:
+        direction = generate_signal(prev_signal)
+        attempts += 1
+
+    now = datetime.utcnow() + timedelta(hours=7)
+    expired_timestamp = now_timestamp + 300
 
     signal_data = {
         "direction": direction,
@@ -66,7 +69,6 @@ def start(message):
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
     signal = get_signal(call.data)
-
     header = "🟢📈 BUY NOW 🔼" if signal["direction"] == "BUY" else "🟥📉 SELL NOW 🔽"
     letter = "B" if signal["direction"] == "BUY" else "S"
 
