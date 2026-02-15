@@ -7,7 +7,10 @@ bot = telebot.TeleBot(TOKEN)
 
 # Market list
 markets = {
-    "📊 CryptoIDX": "crypto"
+    "📊 CryptoIDX": "crypto",
+    "💴 AUD/USD": "audusd",
+    "🥇 XAU/USD": "xauusd",
+    "💷 GBP/USD": "gbpusd"
 }
 
 # Simpan signal aktif (5 menit per market)
@@ -42,7 +45,7 @@ def get_signal(market_key):
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    markup = telebot.types.InlineKeyboardMarkup()
+    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
     for name, value in markets.items():
         markup.add(
             telebot.types.InlineKeyboardButton(name, callback_data=value)
@@ -55,21 +58,28 @@ def start(message):
     )
 
 
-@bot.callback_query_handler(func=lambda call: True)
+@bot.callback_query_handler(func=lambda call: True):
 def callback(call):
     signal = get_signal(call.data)
 
-    # Biar emoji beda kalau BUY / SELL
+    # Header emoji beda untuk BUY/SELL
     if signal["direction"] == "BUY":
         header = "🟢📈 BUY NOW 🔼"
     else:
         header = "🟥📉 SELL NOW 🔽"
 
+    # Pasang nama market sesuai tombol
+    market_name = None
+    for name, key in markets.items():
+        if key == call.data:
+            market_name = name
+            break
+
     text = f"""
 {header} |⌚ {signal['date']}
 ━━━━━━━━━━━━━━━━━━
 👉 {signal['time']}  S
-📊 MARKET: 𝗖𝗿𝘆𝗽𝘁𝗼𝗜𝗗𝗫
+📊 MARKET: {market_name}
 ━━━━━━━━━━━━━━━━━━
 ⚠️ MAXIMAL K2 | KOMPENSASI SEARAH
 ⚠️ LIHAT JAM DI GMT+7
