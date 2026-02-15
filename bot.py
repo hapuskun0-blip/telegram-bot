@@ -1,10 +1,12 @@
 import telebot
 import random
+import time
 from datetime import datetime, timedelta
 
-TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
+TOKEN = "ISI_TOKEN_BOT_LU"
 bot = telebot.TeleBot(TOKEN)
 
+# Market list
 markets = {
     "CryptoIDX": "crypto",
     "AUD/USD": "audusd",
@@ -12,27 +14,33 @@ markets = {
     "GBP/USD": "gbpusd"
 }
 
+# Simpan signal aktif (5 menit per market)
 active_signals = {}
 
 def generate_signal():
     return random.choice(["BUY", "SELL"])
 
 def get_signal(market_key):
-    now = datetime.utcnow() + timedelta(hours=7)
-    expired_time = now + timedelta(minutes=5)
+    now_timestamp = int(time.time())  # detik sejak epoch
 
+    # Kalau masih dalam 5 menit, pakai signal lama
     if market_key in active_signals:
         saved = active_signals[market_key]
-        if now < saved["expired"]:
+        if now_timestamp < saved["expired"]:
             return saved
 
+    # Generate baru
     direction = generate_signal()
+    now = datetime.utcnow() + timedelta(hours=7)  # WIB
+    expired_timestamp = now_timestamp + 300  # 5 menit = 300 detik
+
     signal_data = {
         "direction": direction,
         "time": now.strftime("%H:%M"),
         "date": now.strftime("%Y-%m-%d"),
-        "expired": expired_time
+        "expired": expired_timestamp
     }
+
     active_signals[market_key] = signal_data
     return signal_data
 
@@ -58,6 +66,7 @@ def callback(call):
     else:
         header = "🟥📉 SELL NOW 🔽"
 
+    # Nama market sesuai tombol
     market_name = None
     for name, key in markets.items():
         if key == call.data:
