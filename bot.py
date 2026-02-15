@@ -1,7 +1,7 @@
 import telebot
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
 bot = telebot.TeleBot(TOKEN)
@@ -13,15 +13,15 @@ markets = {
     "🥇 XAU/USD": "xauusd"
 }
 
+# Simpan signal aktif per market
+active_signals = {}
+
 def generate_signal(pair):
     random.seed(pair + str(time.time()))
-
     direction = random.choice(["BUY 🟢", "SELL 🔴"])
 
     if "XAU" in pair:
         entry = round(random.uniform(1900, 2100), 2)
-        tp = round(entry + random.uniform(5, 20), 2)
-        sl = round(entry - random.uniform(5, 20), 2)
     else:
         base_price = {
             "EUR/USD": 1.0800,
@@ -31,12 +31,33 @@ def generate_signal(pair):
 
         clean_pair = pair.replace("💶 ", "").replace("💷 ", "").replace("💴 ", "").replace("🥇 ", "")
         base = base_price.get(clean_pair, 1.1000)
-
         entry = round(base + random.uniform(-0.0100, 0.0100), 5)
-        tp = round(entry + random.uniform(0.0020, 0.0080), 5)
-        sl = round(entry - random.uniform(0.0020, 0.0080), 5)
 
-    return direction, entry, tp, sl
+    return direction, entry
+
+
+def get_signal(pair_name):
+    now = datetime.utcnow() + timedelta(hours=7)  # WIB
+    expiry_time = now + timedelta(minutes=5)
+
+    # Kalau sudah ada signal & belum expired → pakai yang lama
+    if pair_name in active_signals:
+        saved = active_signals[pair_name]
+        if now < saved["expired"]:
+            return saved
+
+    # Kalau belum ada / sudah expired → bikin baru
+    direction, entry = generate_signal(pair_name)
+
+    signal_data = {
+        "direction": direction,
+        "entry": entry,
+        "time": now.strftime("%H:%M:%S"),
+        "expired": expiry_time
+    }
+
+    active_signals[pair_name] = signal_data
+    return signal_data
 
 
 @bot.message_handler(commands=['start'])
@@ -52,8 +73,7 @@ def start(message):
         message.chat.id,
         "🔥 *PREMIUM AI SIGNAL BOT*\n"
         "━━━━━━━━━━━━━━━━━━\n"
-        "📊 Akurasi Tinggi\n"
-        "⚡ Real Time Market\n"
+        "📊 Real Time Market\n"
         "💎 Pilih Market Di Bawah\n",
         parse_mode="Markdown",
         reply_markup=markup
@@ -70,21 +90,17 @@ def callback(call):
             break
 
     if pair_name:
-        direction, entry, tp, sl = generate_signal(pair_name)
-
-        now = datetime.now().strftime("%H:%M:%S")
+        signal = get_signal(pair_name)
 
         text = f"""
 ━━━━━━━━━━━━━━━━━━
 📡 *{pair_name} SIGNAL*
 ━━━━━━━━━━━━━━━━━━
 
-📈 Direction  : {direction}
-🎯 Entry Price: `{entry}`
-🏆 Take Profit: `{tp}`
-🛑 Stop Loss  : `{sl}`
+📈 Direction  : {signal['direction']}
+🎯 Entry Price: `{signal['entry']}`
 
-⏰ Time       : {now}
+⏰ Time (WIB) : {signal['time']}
 ⏳ Expired    : 5 Minutes
 
 ━━━━━━━━━━━━━━━━━━
