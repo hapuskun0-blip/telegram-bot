@@ -2,11 +2,13 @@ import telebot
 import random
 import time
 from datetime import datetime, timedelta
+from flask import Flask
+import threading
 
 TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
 bot = telebot.TeleBot(TOKEN)
 
-# Market list baru
+# Market list
 markets = {
     "CryptoIDX": "crypto",
     "Samba_X": "samba",
@@ -32,7 +34,6 @@ def get_signal(market_key):
         if now_timestamp < saved["expired"]:
             return saved
 
-    # Generate baru sampai beda dari sebelumnya
     prev_signal = active_signals.get(market_key, {}).get("direction")
     direction = generate_signal(prev_signal)
 
@@ -57,6 +58,8 @@ def get_signal(market_key):
 # ==== START COMMAND ====
 @bot.message_handler(commands=['start'])
 def start(message):
+    chat_id = message.chat.id
+
     markup = telebot.types.InlineKeyboardMarkup(row_width=2)
     for market_name, market_key in markets.items():
         # Tambahin stiker 📊 di nama market
@@ -64,15 +67,13 @@ def start(message):
         markup.add(
             telebot.types.InlineKeyboardButton(text=display_name, callback_data=market_key)
         )
-    bot.send_message(
-        message.chat.id,
-        "🔥 YOYO SIGNAL BOT 🔥\n\nPilih Market:",
-        reply_markup=markup
-    )
+    bot.send_message(chat_id, "🔥 YOYO SIGNAL BOT 🔥\n\nPilih Market:", reply_markup=markup)
 
 # ==== CALLBACK HANDLER ====
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
+    chat_id = call.message.chat.id
+
     signal = get_signal(call.data)
     header = "🟢📈 BUY NOW 🔼" if signal["direction"] == "BUY" else "🟥📉 SELL NOW 🔽"
     letter = "B" if signal["direction"] == "BUY" else "S"
@@ -88,10 +89,23 @@ def callback(call):
 ⚠️ LIHAT JAM DI GMT+7
 ⚠️ CARA PAKAINYA -1 MENIT SEBELUM SIGNAL
 ━━━━━━━━━━━━━━━━━━
-©️Copyright by @yoyotrader01
+©️Copyright by @YOYO SIGNAL BOT
 🔄 /start untuk Cek Signal Berikutnya
 """
-    bot.send_message(call.message.chat.id, text)
+    bot.send_message(chat_id, text)
 
+# ==== FLASK MINIMAL UNTUK URL ====
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot YOYO Signal Aktif ✅"
+
+def run_flask():
+    app.run(host="0.0.0.0", port=8000)
+
+threading.Thread(target=run_flask).start()
+
+# ==== START BOT TELEGRAM ====
 print("Bot running...")
 bot.infinity_polling()
