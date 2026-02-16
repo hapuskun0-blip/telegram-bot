@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timedelta
 from flask import Flask
 import threading
+import os
 
 TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
 bot = telebot.TeleBot(TOKEN)
@@ -94,7 +95,7 @@ def callback(call):
 """
     bot.send_message(chat_id, text)
 
-# ==== FLASK MINIMAL UNTUK URL ====
+# ==== FLASK MINIMAL UNTUK URL (Crash Free) ====
 app = Flask(__name__)
 
 @app.route("/")
@@ -102,10 +103,12 @@ def home():
     return "Bot YOYO Signal Aktif ✅"
 
 def run_flask():
-    app.run(host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))  # ambil port Railway
+    app.run(host="0.0.0.0", port=port)
 
+def run_bot():
+    bot.infinity_polling()
+
+# Jalankan keduanya di thread terpisah
 threading.Thread(target=run_flask).start()
-
-# ==== START BOT TELEGRAM ====
-print("Bot running...")
-bot.infinity_polling()
+threading.Thread(target=run_bot).start()
