@@ -43,7 +43,7 @@ def build_signal_text(market):
 ⚠️ LIHAT JAM DI GMT+7
 ⚠️ CARA PAKAINYA -1 MENIT SEBELUM SIGNAL
 ━━━━━━━━━━━━━━━━━━
-©️Copyright by @YOYO SIGNAL BOT
+©️Copyright by @yoyotrader01
 🔄 /start untuk Cek Signal Berikutnya
 """
     return text
