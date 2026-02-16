@@ -66,7 +66,7 @@ def callback(call):
 ⚠️ LIHAT JAM DI GMT+7
 ⚠️ CARA PAKAINYA -1 MENIT SEBELUM SIGNAL
 ━━━━━━━━━━━━━━━━━━
-©️Copyright by @YOYO SIGNAL BOT
+©️Copyright by @yoyotrader01
 🔄 /start untuk Cek Signal Berikutnya
 """
     bot.send_message(chat_id, text)
