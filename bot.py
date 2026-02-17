@@ -1,84 +1,107 @@
-import telebot
+import json
 import random
-import time
 from datetime import datetime, timedelta
-import threading
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 
 TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
-bot = telebot.TeleBot(TOKEN)
+DATA_FILE = "signals.json"
 
-markets = ["CryptoIDX", "Samba_X", "Tropic_X", "Street_X"]
+MARKETS = {
+    "crypto": "📊 CryptoIDX",
+    "samba": "📊 Samba_X",
+    "tropic": "📊 Tropic_X",
+    "street": "📊 Street_X"
+}
 
-# Simpan signal aktif per market
-active_signals = {}
+# ================= LOAD & SAVE =================
+
+def load_data():
+    try:
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f)
+
+active_signals = load_data()
+
+# ================= SIGNAL LOGIC =================
 
 def generate_signal():
-    return random.choice(["BUY", "SELL"])
+    return random.choice(["BUY 🟢", "SELL 🔴"])
 
 def get_signal(market_key):
-    now = datetime.utcnow() + timedelta(hours=7)  # WIB sekarang
-    signal_time = now + timedelta(minutes=5)       # jam +5 menit
-    signal_time_str = signal_time.strftime("%H:%M")
+    # Kalau sudah pernah ada signal → pakai yang lama
+    if market_key in active_signals:
+        return active_signals[market_key]
 
-    # Simpan signal per market
-    direction = generate_signal()
-    active_signals[market_key] = {
-        "direction": direction,
-        "time": signal_time_str,
-        "expires": (now + timedelta(minutes=5)).timestamp()
+    # Kalau belum ada → generate baru
+    now = datetime.utcnow() + timedelta(hours=7)  # WIB
+    entry_time = now + timedelta(minutes=5)
+
+    signal_data = {
+        "direction": generate_signal(),
+        "time": entry_time.strftime("%H:%M")
     }
-    return active_signals[market_key]
 
-def build_signal_text(market):
-    sig = get_signal(market)
-    header = "🟢📈 BUY NOW 🔼" if sig["direction"] == "BUY" else "🟥📉 SELL NOW 🔽"
-    letter = "B" if sig["direction"] == "BUY" else "S"
+    active_signals[market_key] = signal_data
+    save_data(active_signals)
+
+    return signal_data
+
+# ================= TELEGRAM =================
+
+def start(update: Update, context: CallbackContext):
+    keyboard = [
+        [
+            InlineKeyboardButton("📊 CryptoIDX", callback_data="crypto"),
+            InlineKeyboardButton("📊 Samba_X", callback_data="samba")
+        ],
+        [
+            InlineKeyboardButton("📊 Tropic_X", callback_data="tropic"),
+            InlineKeyboardButton("📊 Street_X", callback_data="street")
+        ]
+    ]
+
+    update.message.reply_text(
+        "🔥 YOYO SIGNAL BOT 🔥\n\nPilih Market:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def button(update: Update, context: CallbackContext):
+    query = update.callback_query
+    query.answer()
+
+    market_key = query.data
+    signal = get_signal(market_key)
 
     text = f"""
-{header} {sig['time']} {letter}
+{signal['direction']} {signal['time']}
 ━━━━━━━━━━━━━━━━━━
-📊 MARKET: {market}
+{MARKETS[market_key]}
 ━━━━━━━━━━━━━━━━━━
 ⚠️ MAXIMAL K2 | KOMPENSASI SEARAH
 ⚠️ LIHAT JAM DI GMT+7
 ⚠️ CARA PAKAINYA -1 MENIT SEBELUM SIGNAL
 ━━━━━━━━━━━━━━━━━━
-©️Copyright by @yoyotrader01
-🔄 /start untuk Cek Signal Berikutnya
+©️ YOYO SIGNAL BOT
 """
-    return text
 
-# Fungsi update tiap 5 menit
-def auto_update(chat_id, msg_id, market):
-    while True:
-        try:
-            new_text = build_signal_text(market)
-            bot.edit_message_text(chat_id=chat_id, message_id=msg_id, text=new_text)
-        except Exception as e:
-            print("Error editing message:", e)
-        time.sleep(300)  # 5 menit
+    query.edit_message_text(text=text)
 
-# START COMMAND
-@bot.message_handler(commands=['start'])
-def start(message):
-    chat_id = message.chat.id
-    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
-    for market_name in markets:
-        display_name = f"📊 {market_name}"
-        markup.add(telebot.types.InlineKeyboardButton(text=display_name, callback_data=market_name))
-    bot.send_message(chat_id, "🔥 YOYO SIGNAL BOT 🔥\n\nPilih Market:", reply_markup=markup)
+def main():
+    updater = Updater(TOKEN, use_context=True)
+    dp = updater.dispatcher
 
-# CALLBACK HANDLER
-@bot.callback_query_handler(func=lambda call: True)
-def callback(call):
-    chat_id = call.message.chat.id
-    market = call.data
-    text = build_signal_text(market)
-    
-    # Kirim signal di pesan baru tapi akan update tiap 5 menit
-    msg = bot.send_message(chat_id, text)
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CallbackQueryHandler(button))
 
-    threading.Thread(target=auto_update, args=(chat_id, msg.message_id, market)).start()
+    updater.start_polling()
+    updater.idle()
 
-print("Bot running...")
-bot.infinity_polling()
+if __name__ == "__main__":
+    main()
