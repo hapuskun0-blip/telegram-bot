@@ -1,13 +1,14 @@
-import json
+import telebot
 import random
+import json
 from datetime import datetime, timedelta
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 
 TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
+bot = telebot.TeleBot(TOKEN)
+
 DATA_FILE = "signals.json"
 
-MARKETS = {
+markets = {
     "crypto": "📊 CryptoIDX",
     "samba": "📊 Samba_X",
     "tropic": "📊 Tropic_X",
@@ -29,18 +30,16 @@ def save_data(data):
 
 active_signals = load_data()
 
-# ================= SIGNAL LOGIC =================
+# ================= SIGNAL =================
 
 def generate_signal():
     return random.choice(["BUY 🟢", "SELL 🔴"])
 
 def get_signal(market_key):
-    # Kalau sudah pernah ada signal → pakai yang lama
     if market_key in active_signals:
         return active_signals[market_key]
 
-    # Kalau belum ada → generate baru
-    now = datetime.utcnow() + timedelta(hours=7)  # WIB
+    now = datetime.utcnow() + timedelta(hours=7)
     entry_time = now + timedelta(minutes=5)
 
     signal_data = {
@@ -55,34 +54,31 @@ def get_signal(market_key):
 
 # ================= TELEGRAM =================
 
-def start(update: Update, context: CallbackContext):
-    keyboard = [
-        [
-            InlineKeyboardButton("📊 CryptoIDX", callback_data="crypto"),
-            InlineKeyboardButton("📊 Samba_X", callback_data="samba")
-        ],
-        [
-            InlineKeyboardButton("📊 Tropic_X", callback_data="tropic"),
-            InlineKeyboardButton("📊 Street_X", callback_data="street")
-        ]
+@bot.message_handler(commands=['start'])
+def start(message):
+    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+
+    buttons = [
+        telebot.types.InlineKeyboardButton("📊 CryptoIDX", callback_data="crypto"),
+        telebot.types.InlineKeyboardButton("📊 Samba_X", callback_data="samba"),
+        telebot.types.InlineKeyboardButton("📊 Tropic_X", callback_data="tropic"),
+        telebot.types.InlineKeyboardButton("📊 Street_X", callback_data="street"),
     ]
 
-    update.message.reply_text(
-        "🔥 YOYO SIGNAL BOT 🔥\n\nPilih Market:",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    markup.add(buttons[0], buttons[1])
+    markup.add(buttons[2], buttons[3])
 
-def button(update: Update, context: CallbackContext):
-    query = update.callback_query
-    query.answer()
+    bot.send_message(message.chat.id, "🔥 YOYO SIGNAL BOT 🔥\n\nPilih Market:", reply_markup=markup)
 
-    market_key = query.data
+@bot.callback_query_handler(func=lambda call: True)
+def callback(call):
+    market_key = call.data
     signal = get_signal(market_key)
 
     text = f"""
 {signal['direction']} {signal['time']}
 ━━━━━━━━━━━━━━━━━━
-{MARKETS[market_key]}
+{markets[market_key]}
 ━━━━━━━━━━━━━━━━━━
 ⚠️ MAXIMAL K2 | KOMPENSASI SEARAH
 ⚠️ LIHAT JAM DI GMT+7
@@ -91,17 +87,9 @@ def button(update: Update, context: CallbackContext):
 ©️ YOYO SIGNAL BOT
 """
 
-    query.edit_message_text(text=text)
+    bot.edit_message_text(chat_id=call.message.chat.id,
+                          message_id=call.message.message_id,
+                          text=text)
 
-def main():
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
-
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CallbackQueryHandler(button))
-
-    updater.start_polling()
-    updater.idle()
-
-if __name__ == "__main__":
-    main()
+print("Bot running...")
+bot.infinity_polling()
