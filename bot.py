@@ -1,12 +1,9 @@
 import telebot
 import random
-import json
 from datetime import datetime, timedelta
 
 TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
 bot = telebot.TeleBot(TOKEN)
-
-DATA_FILE = "signals.json"
 
 markets = {
     "crypto": "📊 CryptoIDX",
@@ -15,42 +12,20 @@ markets = {
     "street": "📊 Street_X"
 }
 
-# ================= LOAD & SAVE =================
-
-def load_data():
-    try:
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return {}
-
-def save_data(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f)
-
-active_signals = load_data()
-
 # ================= SIGNAL =================
 
 def generate_signal():
     return random.choice(["BUY 🟢", "SELL 🔴"])
 
-def get_signal(market_key):
-    if market_key in active_signals:
-        return active_signals[market_key]
-
+def get_signal():
+    # WIB (GMT+7)
     now = datetime.utcnow() + timedelta(hours=7)
     entry_time = now + timedelta(minutes=5)
 
-    signal_data = {
+    return {
         "direction": generate_signal(),
         "time": entry_time.strftime("%H:%M")
     }
-
-    active_signals[market_key] = signal_data
-    save_data(active_signals)
-
-    return signal_data
 
 # ================= TELEGRAM =================
 
@@ -72,13 +47,13 @@ def start(message):
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
-    market_key = call.data
-    signal = get_signal(market_key)
+    signal = get_signal()
+    market_name = markets.get(call.data, "Unknown Market")
 
     text = f"""
 {signal['direction']} {signal['time']}
 ━━━━━━━━━━━━━━━━━━
-{markets[market_key]}
+{market_name}
 ━━━━━━━━━━━━━━━━━━
 ⚠️ MAXIMAL K2 | KOMPENSASI SEARAH
 ⚠️ LIHAT JAM DI GMT+7
@@ -87,9 +62,11 @@ def callback(call):
 ©️ YOYO SIGNAL BOT
 """
 
-    bot.edit_message_text(chat_id=call.message.chat.id,
-                          message_id=call.message.message_id,
-                          text=text)
+    bot.edit_message_text(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        text=text
+    )
 
 print("Bot running...")
 bot.infinity_polling()
