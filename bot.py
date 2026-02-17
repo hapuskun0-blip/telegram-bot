@@ -1,91 +1,102 @@
 import telebot
 import random
+import time
 from datetime import datetime, timedelta
 
 TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
 bot = telebot.TeleBot(TOKEN)
 
 markets = {
-"crypto": "📊 CryptoIDX",
-"samba": "📊 Samba_X",
-"tropic": "📊 Tropic_X",
-"street": "📊 Street_X"
+    "crypto": "📊 CryptoIDX",
+    "samba": "📊 Samba_X",
+    "tropic": "📊 Tropic_X",
+    "street": "📊 Street_X"
 }
 
 active_signals = {}
 
-================= SIGNAL =================
+# ================= SIGNAL =================
 
 def generate_signal():
-return random.choice(["BUY 🟢", "SELL 🔴"])
+    return random.choice(["BUY 🟢", "SELL 🔴"])
+
 
 def get_signal(market_key):
-now = datetime.utcnow() + timedelta(hours=7)
+    now = datetime.utcnow() + timedelta(hours=7)
 
-Kalau sudah ada signal
+    # Kalau sudah ada signal
+    if market_key in active_signals:
+        saved = active_signals[market_key]
 
-if market_key in active_signals:
-saved = active_signals[market_key]
-entry_time = datetime.strptime(saved["time"], "%H:%M")
-entry_time = entry_time.replace(year=now.year, month=now.month, day=now.day)
+        # Kalau sekarang masih sebelum entry time → pakai lama
+        if now < saved["entry_time"]:
+            return saved
 
-# Kalau sekarang masih sebelum entry time → pakai yang lama    
-if now < entry_time:    
-    return saved
+    # Bikin signal baru
+    entry_time = now + timedelta(minutes=5)
 
-Kalau belum ada atau sudah lewat waktunya → bikin baru
+    new_signal = {
+        "direction": generate_signal(),
+        "entry_time": entry_time
+    }
 
-new_entry = now + timedelta(minutes=5)
+    active_signals[market_key] = new_signal
+    return new_signal
 
-new_signal = {
-"direction": generate_signal(),
-"time": new_entry.strftime("%H:%M")
-}
 
-active_signals[market_key] = new_signal
-return new_signal
-
-================= TELEGRAM =================
+# ================= TELEGRAM =================
 
 @bot.message_handler(commands=['start'])
 def start(message):
-markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
 
-buttons = [
-telebot.types.InlineKeyboardButton("📊 CryptoIDX", callback_data="crypto"),
-telebot.types.InlineKeyboardButton("📊 Samba_X", callback_data="samba"),
-telebot.types.InlineKeyboardButton("📊 Tropic_X", callback_data="tropic"),
-telebot.types.InlineKeyboardButton("📊 Street_X", callback_data="street"),
-]
+    btn1 = telebot.types.InlineKeyboardButton("📊 CryptoIDX", callback_data="crypto")
+    btn2 = telebot.types.InlineKeyboardButton("📊 Samba_X", callback_data="samba")
+    btn3 = telebot.types.InlineKeyboardButton("📊 Tropic_X", callback_data="tropic")
+    btn4 = telebot.types.InlineKeyboardButton("📊 Street_X", callback_data="street")
 
-markup.add(buttons[0], buttons[1])
-markup.add(buttons[2], buttons[3])
+    markup.add(btn1, btn2)
+    markup.add(btn3, btn4)
 
-bot.send_message(message.chat.id, "🔥 YOYO SIGNAL BOT 🔥\n\nPilih Market:", reply_markup=markup)
+    bot.send_message(
+        message.chat.id,
+        "🔥 YOYO SIGNAL BOT 🔥\n\nPilih Market:",
+        reply_markup=markup
+    )
+
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
-signal = get_signal(call.data)
-market_name = markets.get(call.data, "Unknown Market")
+    try:
+        bot.answer_callback_query(call.id, "⏳ Generating signal...")
+        time.sleep(2)
 
-text = f"""
+        signal = get_signal(call.data)
+        market_name = markets.get(call.data, "Unknown Market")
 
-{signal['direction']} {signal['time']}
-━━━━━━━━━━━━━━━━━━
-{market_name}
-━━━━━━━━━━━━━━━━━━
-⚠️ MAXIMAL K2 | KOMPENSASI SEARAH
-⚠️ LIHAT JAM DI GMT+7
-⚠️ CARA PAKAINYA -1 MENIT SEBELUM SIGNAL
-━━━━━━━━━━━━━━━━━━
-©️ YOYO SIGNAL BOT
-"""
+        entry_str = signal["entry_time"].strftime("%H:%M")
 
-bot.edit_message_text(
-chat_id=call.message.chat.id,
-message_id=call.message.message_id,
-text=text
-)
+        text = (
+            f"{signal['direction']} {entry_str}\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            f"{market_name}\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "⚠️ MAXIMAL K2 | KOMPENSASI SEARAH\n"
+            "⚠️ LIHAT JAM DI GMT+7\n"
+            "⚠️ CARA PAKAINYA -1 MENIT SEBELUM SIGNAL\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "©️ YOYO SIGNAL BOT"
+        )
+
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text=text
+        )
+
+    except Exception as e:
+        print("ERROR:", e)
+
 
 print("Bot running...")
 bot.infinity_polling()
