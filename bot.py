@@ -5,8 +5,10 @@ import json
 import os
 from datetime import datetime, timedelta
 
-TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
-ADMIN_ID = 6938192333 # GANTI dengan ID Telegram lu
+# AMBIL TOKEN DARI ENV
+TOKEN = os.environ.get("TOKEN")
+
+ADMIN_ID = 6938192333  # ganti kalau perlu
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -106,7 +108,7 @@ def show_markets(chat_id):
 def callback(call):
     user_id = call.from_user.id
 
-    # ================= REQUEST ACCESS =================
+    # REQUEST ACCESS
     if call.data == "request_access":
 
         markup = telebot.types.InlineKeyboardMarkup()
@@ -123,7 +125,7 @@ def callback(call):
         bot.answer_callback_query(call.id, "Request dikirim ke admin ✅")
         return
 
-    # ================= ADMIN ACC =================
+    # ADMIN ACC
     if call.data.startswith("acc_") and call.from_user.id == ADMIN_ID:
         target_id = int(call.data.split("_")[1])
 
@@ -135,7 +137,7 @@ def callback(call):
         bot.edit_message_text("✅ User sudah di-ACC", call.message.chat.id, call.message.message_id)
         return
 
-    # ================= ADMIN REJECT =================
+    # ADMIN REJECT
     if call.data.startswith("reject_") and call.from_user.id == ADMIN_ID:
         target_id = int(call.data.split("_")[1])
 
@@ -143,7 +145,7 @@ def callback(call):
         bot.edit_message_text("❌ User ditolak", call.message.chat.id, call.message.message_id)
         return
 
-    # ================= SIGNAL =================
+    # SIGNAL
     if user_id not in users["approved"]:
         bot.answer_callback_query(call.id, "❌ Anda belum memiliki akses")
         return
