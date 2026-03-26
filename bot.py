@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timedelta
 
 TOKEN = "8434399652:AAFRWhgu_9kdjzYkAnsghMUz0AgC-v9zgK0"
-ADMIN_ID = 6938192333 # GANTI dengan ID Telegram lu
+ADMIN_ID = 6938192333  # Ganti kalau perlu
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -31,10 +31,12 @@ users = load_users()
 # ================= MARKETS =================
 
 markets = {
-    "crypto": "📊 CryptoIDX",
-    "samba": "📊 Samba_X",
-    "tropic": "📊 Tropic_X",
-    "street": "📊 Street_X"
+    "crypto": "🪙 Crypto IDX",
+    "eurusd": "🇪🇺🇺🇸 EUR/USD",
+    "audusd": "🇦🇺🇺🇸 AUD/USD",
+    "sgdjpy": "🇸🇬🇯🇵 SGD/JPY",
+    "eurhuf": "🇪🇺🇭🇺 EUR/HUF",
+    "usdmxn": "🇺🇸🇲🇽 USD/MXN"
 }
 
 active_signals = {}
@@ -90,13 +92,13 @@ def start(message):
 def show_markets(chat_id):
     markup = telebot.types.InlineKeyboardMarkup(row_width=2)
 
-    btn1 = telebot.types.InlineKeyboardButton("📊 CryptoIDX", callback_data="crypto")
-    btn2 = telebot.types.InlineKeyboardButton("📊 Samba_X", callback_data="samba")
-    btn3 = telebot.types.InlineKeyboardButton("📊 Tropic_X", callback_data="tropic")
-    btn4 = telebot.types.InlineKeyboardButton("📊 Street_X", callback_data="street")
+    buttons = []
+    for key, name in markets.items():
+        buttons.append(
+            telebot.types.InlineKeyboardButton(name, callback_data=key)
+        )
 
-    markup.add(btn1, btn2)
-    markup.add(btn3, btn4)
+    markup.add(*buttons)
 
     bot.send_message(chat_id, "🔥 YOYO SIGNAL BOT 🔥\n\nPilih Market:", reply_markup=markup)
 
@@ -106,7 +108,7 @@ def show_markets(chat_id):
 def callback(call):
     user_id = call.from_user.id
 
-    # ================= REQUEST ACCESS =================
+    # ===== REQUEST ACCESS =====
     if call.data == "request_access":
 
         markup = telebot.types.InlineKeyboardMarkup()
@@ -123,7 +125,7 @@ def callback(call):
         bot.answer_callback_query(call.id, "Request dikirim ke admin ✅")
         return
 
-    # ================= ADMIN ACC =================
+    # ===== ADMIN ACC =====
     if call.data.startswith("acc_") and call.from_user.id == ADMIN_ID:
         target_id = int(call.data.split("_")[1])
 
@@ -135,7 +137,7 @@ def callback(call):
         bot.edit_message_text("✅ User sudah di-ACC", call.message.chat.id, call.message.message_id)
         return
 
-    # ================= ADMIN REJECT =================
+    # ===== ADMIN REJECT =====
     if call.data.startswith("reject_") and call.from_user.id == ADMIN_ID:
         target_id = int(call.data.split("_")[1])
 
@@ -143,7 +145,7 @@ def callback(call):
         bot.edit_message_text("❌ User ditolak", call.message.chat.id, call.message.message_id)
         return
 
-    # ================= SIGNAL =================
+    # ===== SIGNAL =====
     if user_id not in users["approved"]:
         bot.answer_callback_query(call.id, "❌ Anda belum memiliki akses")
         return
@@ -164,7 +166,7 @@ def callback(call):
             "━━━━━━━━━━━━━━━━━━\n"
             "⚠️ MAXIMAL K2 | KOMPENSASI SEARAH\n"
             "⚠️ LIHAT JAM DI GMT+7\n"
-            "⚠️ CARA PAKAINYA -1 MENIT SEBELUM SIGNAL\n"
+            "⚠️ ENTRY -1 MENIT SEBELUM SIGNAL\n"
             "━━━━━━━━━━━━━━━━━━\n"
             "©️ YOYO SIGNAL BOT"
         )
